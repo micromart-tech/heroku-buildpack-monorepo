@@ -11,6 +11,41 @@ BUILD_DIR="$1"
 CACHE_DIR="$2"
 ENV_DIR="$3"
 STAGE="$(mktemp -d)"
+LOCAL_REGISTRY="$(mktemp -d)"
+
+# Run yarn install from the root of the project first
+echo "Installing dependencies with yarn..." | indent
+cd "${BUILD_DIR}" || exit 1
+yarn install
+
+if [ $? -ne 0 ]; then
+    echo "FAILED to install dependencies with yarn" | indent
+    exit 1
+fi
+
+echo "Dependencies installed successfully" | indent
+
+# Use Lerna to bump minor versions of all packages
+echo "Bumping package versions with Lerna..." | indent
+npx lerna version minor --yes --no-push --no-git-tag-version
+
+if [ $? -ne 0 ]; then
+    echo "FAILED to bump package versions with Lerna" | indent
+    exit 1
+fi
+
+echo "Package versions bumped successfully" | indent
+
+# Use Lerna to publish packages locally
+echo "Publishing packages locally with Lerna..." | indent
+npx lerna publish from-package --yes --registry=file://${LOCAL_REGISTRY}
+
+if [ $? -ne 0 ]; then
+    echo "FAILED to publish packages locally with Lerna" | indent
+    exit 1
+fi
+
+echo "Packages published locally successfully" | indent
 
 if [ ! -f "${ENV_DIR}/APP_BASE" ]; then
     echo "APP_BASE was not set. Aborting" | indent
@@ -30,4 +65,22 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "Copied ${APP_BASE} to root of app successfully" | indent
+
+# Create .npmrc to prioritize local registry
+echo "Configuring local registry priority..." | indent
+cat > "${BUILD_DIR}/.npmrc" << EOF
+registry=file://${LOCAL_REGISTRY}
+@*:registry=file://${LOCAL_REGISTRY}
+EOF
+
+# Reinstall dependencies to use local packages
+echo "Reinstalling dependencies with local packages..." | indent
+yarn install
+
+if [ $? -ne 0 ]; then
+    echo "FAILED to reinstall dependencies with local packages" | indent
+    exit 1
+fi
+
+echo "Dependencies reinstalled with local packages successfully" | indent
 
