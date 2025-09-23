@@ -11,7 +11,8 @@ BUILD_DIR="$1"
 CACHE_DIR="$2"
 ENV_DIR="$3"
 STAGE="$(mktemp -d)"
-LOCAL_REGISTRY="$(mktemp -d)"
+VERDACCIO_PORT="4873"
+VERDACCIO_REGISTRY="http://localhost:${VERDACCIO_PORT}"
 
 # Run yarn install from the root of the project first
 echo "Installing dependencies with yarn..." | indent
@@ -36,16 +37,45 @@ fi
 
 echo "Package versions bumped successfully" | indent
 
-# Use Lerna to publish packages locally
-echo "Publishing packages locally with Lerna..." | indent
-npx lerna publish from-package --yes --registry=file://${LOCAL_REGISTRY}
+# Install Verdaccio
+echo "Installing Verdaccio..." | indent
+npm install -g verdaccio
 
 if [ $? -ne 0 ]; then
-    echo "FAILED to publish packages locally with Lerna" | indent
+    echo "FAILED to install Verdaccio" | indent
     exit 1
 fi
 
-echo "Packages published locally successfully" | indent
+echo "Verdaccio installed successfully" | indent
+
+# Start Verdaccio local registry
+echo "Starting Verdaccio local registry..." | indent
+npx verdaccio --listen ${VERDACCIO_PORT} --config /dev/null &
+VERDACCIO_PID=$!
+
+# Wait for Verdaccio to start
+sleep 5
+
+# Check if Verdaccio is running
+if ! curl -s "${VERDACCIO_REGISTRY}" > /dev/null; then
+    echo "FAILED to start Verdaccio registry" | indent
+    kill $VERDACCIO_PID 2>/dev/null
+    exit 1
+fi
+
+echo "Verdaccio registry started successfully" | indent
+
+# Use Lerna to publish packages to Verdaccio
+echo "Publishing packages to Verdaccio..." | indent
+npx lerna publish from-package --yes --registry=${VERDACCIO_REGISTRY}
+
+if [ $? -ne 0 ]; then
+    echo "FAILED to publish packages to Verdaccio" | indent
+    kill $VERDACCIO_PID 2>/dev/null
+    exit 1
+fi
+
+echo "Packages published to Verdaccio successfully" | indent
 
 if [ ! -f "${ENV_DIR}/APP_BASE" ]; then
     echo "APP_BASE was not set. Aborting" | indent
@@ -66,11 +96,11 @@ fi
 
 echo "Copied ${APP_BASE} to root of app successfully" | indent
 
-# Create .npmrc to prioritize local registry
-echo "Configuring local registry priority..." | indent
+# Create .npmrc to use Verdaccio registry
+echo "Configuring Verdaccio registry..." | indent
 cat > "${BUILD_DIR}/.npmrc" << EOF
-registry=file://${LOCAL_REGISTRY}
-@*:registry=file://${LOCAL_REGISTRY}
+registry=${VERDACCIO_REGISTRY}
+@*:registry=${VERDACCIO_REGISTRY}
 EOF
 
 # Reinstall dependencies to use local packages
@@ -83,4 +113,14 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "Dependencies reinstalled with local packages successfully" | indent
+
+# Clean up Verdaccio process
+echo "Stopping Verdaccio registry..." | indent
+kill $VERDACCIO_PID 2>/dev/null
+wait $VERDACCIO_PID 2>/dev/null
+
+# Clean up temporary directories
+rm -rf "${STAGE}"
+
+echo "Build completed successfully" | indent
 
