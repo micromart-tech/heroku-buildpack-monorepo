@@ -50,7 +50,7 @@ echo "Verdaccio installed successfully" | indent
 
 # Start Verdaccio local registry
 echo "Starting Verdaccio local registry..." | indent
-npx verdaccio --listen ${VERDACCIO_PORT} --config /dev/null &
+npx verdaccio --listen ${VERDACCIO_PORT} &
 VERDACCIO_PID=$!
 
 # Wait for Verdaccio to start
