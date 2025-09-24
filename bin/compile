@@ -14,6 +14,12 @@ STAGE="$(mktemp -d)"
 VERDACCIO_PORT="4873"
 VERDACCIO_REGISTRY="http://localhost:${VERDACCIO_PORT}"
 
+# Get the buildpack directory (where this script is located)
+BUILDPACK_DIR="$(dirname "$(dirname "$(readlink -f "$0")")")"
+
+# Set up Verdaccio storage directory
+VERDACCIO_STORAGE="${BUILDPACK_DIR}/verdaccio-storage"
+
 # Run yarn install from the root of the project first
 echo "Installing dependencies with yarn..." | indent
 cd "${BUILD_DIR}" || exit 1
@@ -48,9 +54,9 @@ fi
 
 echo "Verdaccio installed successfully" | indent
 
-# Start Verdaccio local registry
-echo "Starting Verdaccio local registry..." | indent
-npx verdaccio --listen ${VERDACCIO_PORT} &
+# Start Verdaccio local registry with custom config
+echo "Starting Verdaccio local registry with custom config..." | indent
+npx verdaccio --listen ${VERDACCIO_PORT} --config "${BUILDPACK_DIR}/verdaccio-config.yaml" &
 VERDACCIO_PID=$!
 
 # Wait for Verdaccio to start
@@ -76,6 +82,15 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "Packages published to Verdaccio successfully" | indent
+
+# Create tar archive of packages for runtime
+echo "Creating package archive for runtime..." | indent
+if [ -d "${VERDACCIO_STORAGE}" ]; then
+    tar -czf "${STAGE}/verdaccio-packages.tar.gz" -C "${VERDACCIO_STORAGE}" .
+    echo "Package archive created successfully" | indent
+else
+    echo "No Verdaccio storage to archive" | indent
+fi
 
 if [ ! -f "${ENV_DIR}/APP_BASE" ]; then
     echo "APP_BASE was not set. Aborting" | indent
