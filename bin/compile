@@ -86,11 +86,16 @@ echo "Packages published to Verdaccio successfully" | indent
 # Create tar archive of packages for runtime
 echo "Creating package archive for runtime..." | indent
 if [ -d "${VERDACCIO_STORAGE}" ]; then
-    tar -czf "${STAGE}/verdaccio-packages.tar.gz" -C "${VERDACCIO_STORAGE}" .
+    tar -czf "${BUILD_DIR}/verdaccio-packages.tar.gz" -C "${VERDACCIO_STORAGE}" .
     echo "Package archive created successfully" | indent
 else
     echo "No Verdaccio storage to archive" | indent
 fi
+
+# Copy Verdaccio config to BUILD_DIR
+echo "Copying Verdaccio config to build directory..." | indent
+cp "${BUILDPACK_DIR}/verdaccio-config.yaml" "${BUILD_DIR}/verdaccio-config.yaml"
+echo "Verdaccio config copied successfully" | indent
 
 if [ ! -f "${ENV_DIR}/APP_BASE" ]; then
     echo "APP_BASE was not set. Aborting" | indent
@@ -111,11 +116,11 @@ fi
 
 echo "Copied ${APP_BASE} to root of app successfully" | indent
 
-# Create .npmrc to use Verdaccio registry
+# Configure .npmrc to use Verdaccio registry
 echo "Configuring Verdaccio registry..." | indent
-cat > "${BUILD_DIR}/.npmrc" << EOF
+cat >> "${BUILD_DIR}/.npmrc" << EOF
 registry=${VERDACCIO_REGISTRY}
-@*:registry=${VERDACCIO_REGISTRY}
+@${ORG_NAME}:registry=${VERDACCIO_REGISTRY}/:_authToken=${NPM_TOKEN}
 EOF
 
 # Reinstall dependencies to use local packages
