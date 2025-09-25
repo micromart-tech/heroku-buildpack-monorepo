@@ -306,12 +306,4 @@ registry=${VERDACCIO_REGISTRY}
 @${ORG_NAME}:registry=${VERDACCIO_REGISTRY}/:_authToken=${NPM_TOKEN}
 EOF
 
-# Clean up Verdaccio process
-echo "Stopping Verdaccio registry..." | indent
-kill $VERDACCIO_PID 2>/dev/null
-wait $VERDACCIO_PID 2>/dev/null
-
-# Clean up temporary directories
-rm -rf "${STAGE}"
-
 echo "Monorepo build completed successfully" | indent
