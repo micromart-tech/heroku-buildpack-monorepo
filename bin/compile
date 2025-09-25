@@ -306,17 +306,6 @@ registry=${VERDACCIO_REGISTRY}
 @${ORG_NAME}:registry=${VERDACCIO_REGISTRY}/:_authToken=${NPM_TOKEN}
 EOF
 
-# Reinstall dependencies to use local packages
-echo "Reinstalling dependencies with local packages..." | indent
-yarn install
-
-if [ $? -ne 0 ]; then
-    echo "FAILED to reinstall dependencies with local packages" | indent
-    exit 1
-fi
-
-echo "Dependencies reinstalled with local packages successfully" | indent
-
 # Clean up Verdaccio process
 echo "Stopping Verdaccio registry..." | indent
 kill $VERDACCIO_PID 2>/dev/null
@@ -325,5 +314,4 @@ wait $VERDACCIO_PID 2>/dev/null
 # Clean up temporary directories
 rm -rf "${STAGE}"
 
-echo "Build completed successfully" | indent
-
+echo "Monorepo build completed successfully" | indent
