@@ -32,16 +32,16 @@ if [ -f "${BUILD_DIR}/package.json" ]; then
         NODE_MAJOR=$(echo "${NODE_ENGINE}" | sed 's/[^0-9]*\([0-9]*\).*/\1/')
         case "${NODE_MAJOR}" in
             16) NODE_VERSION="16.20.2" ;;
-            18) NODE_VERSION="18.19.0" ;;
+            18) NODE_VERSION="18.18.0" ;;
             20) NODE_VERSION="20.11.0" ;;
             21) NODE_VERSION="21.6.2" ;;
-            *) NODE_VERSION="18.19.0" ;;
+            *) NODE_VERSION="18.18.0" ;;
         esac
     else
-        NODE_VERSION="18.19.0"  # Default Node.js version
+        NODE_VERSION="18.18.0"  # Default Node.js version
     fi
 else
-    NODE_VERSION="18.19.0"  # Default Node.js version
+    NODE_VERSION="18.18.0"  # Default Node.js version
 fi
 
 echo "Installing Node.js version: ${NODE_VERSION}" | indent
