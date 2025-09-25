@@ -64,6 +64,36 @@ echo "Node.js installed successfully" | indent
 echo "Node version: $(node --version)" | indent
 echo "NPM version: $(npm --version)" | indent
 
+# Install Yarn
+echo "Installing Yarn..." | indent
+
+# Check for Yarn version in package.json
+YARN_VERSION="1.22.19"  # Default Yarn version
+if [ -f "${BUILD_DIR}/package.json" ]; then
+    YARN_ENGINE=$(grep -o '"yarn": *"[^"]*"' "${BUILD_DIR}/package.json" | sed 's/"yarn": *"\([^"]*\)"/\1/' || echo "")
+    if [ -n "${YARN_ENGINE}" ]; then
+        echo "Found Yarn version requirement: ${YARN_ENGINE}" | indent
+        # Extract version number
+        YARN_VERSION=$(echo "${YARN_ENGINE}" | sed 's/[^0-9.]*\([0-9.]*\).*/\1/')
+    fi
+fi
+
+echo "Installing Yarn version: ${YARN_VERSION}" | indent
+
+# Create Yarn directory
+mkdir -p "${BUILD_DIR}/.heroku/yarn"
+
+# Download and install Yarn
+cd "${BUILD_DIR}/.heroku/yarn"
+curl -s "https://github.com/yarnpkg/yarn/releases/download/v${YARN_VERSION}/yarn-v${YARN_VERSION}.tar.gz" | tar -xz
+mv yarn-v${YARN_VERSION}/* .
+
+# Update PATH to include Yarn
+export PATH="${BUILD_DIR}/.heroku/yarn/bin:$PATH"
+
+echo "Yarn installed successfully" | indent
+echo "Yarn version: $(yarn --version)" | indent
+
 # Run yarn install from the root of the project first
 echo "Installing dependencies with yarn..." | indent
 cd "${BUILD_DIR}" || exit 1
