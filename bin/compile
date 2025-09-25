@@ -306,4 +306,8 @@ registry=${VERDACCIO_REGISTRY}
 @${ORG_NAME}:registry=${VERDACCIO_REGISTRY}/:_authToken=${NPM_TOKEN}
 EOF
 
+# List final files in BUILD_DIR
+echo "Final build directory contents:" | indent
+ls -la "${BUILD_DIR}" | indent
+
 echo "Monorepo build completed successfully" | indent
