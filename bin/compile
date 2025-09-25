@@ -85,8 +85,10 @@ mkdir -p "${BUILD_DIR}/.heroku/yarn"
 
 # Download and install Yarn
 cd "${BUILD_DIR}/.heroku/yarn"
-curl -s "https://github.com/yarnpkg/yarn/releases/download/v${YARN_VERSION}/yarn-v${YARN_VERSION}.tar.gz" | tar -xz
+curl -sL "https://github.com/yarnpkg/yarn/releases/download/v${YARN_VERSION}/yarn-v${YARN_VERSION}.tar.gz" -o yarn.tar.gz
+tar -xzf yarn.tar.gz
 mv yarn-v${YARN_VERSION}/* .
+rm yarn.tar.gz
 
 # Update PATH to include Yarn
 export PATH="${BUILD_DIR}/.heroku/yarn/bin:$PATH"
