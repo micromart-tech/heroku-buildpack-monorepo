@@ -20,6 +20,50 @@ BUILDPACK_DIR="$(dirname "$(dirname "$(readlink -f "$0")")")"
 # Set up Verdaccio storage directory
 VERDACCIO_STORAGE="${BUILDPACK_DIR}/verdaccio-storage"
 
+# Install Node.js
+echo "Installing Node.js..." | indent
+
+# Check for Node.js version in package.json
+if [ -f "${BUILD_DIR}/package.json" ]; then
+    NODE_ENGINE=$(grep -o '"node": *"[^"]*"' "${BUILD_DIR}/package.json" | sed 's/"node": *"\([^"]*\)"/\1/' || echo "")
+    if [ -n "${NODE_ENGINE}" ]; then
+        echo "Found Node.js version requirement: ${NODE_ENGINE}" | indent
+        # Extract major version for compatibility
+        NODE_MAJOR=$(echo "${NODE_ENGINE}" | sed 's/[^0-9]*\([0-9]*\).*/\1/')
+        case "${NODE_MAJOR}" in
+            16) NODE_VERSION="16.20.2" ;;
+            18) NODE_VERSION="18.19.0" ;;
+            20) NODE_VERSION="20.11.0" ;;
+            21) NODE_VERSION="21.6.2" ;;
+            *) NODE_VERSION="18.19.0" ;;
+        esac
+    else
+        NODE_VERSION="18.19.0"  # Default Node.js version
+    fi
+else
+    NODE_VERSION="18.19.0"  # Default Node.js version
+fi
+
+echo "Installing Node.js version: ${NODE_VERSION}" | indent
+
+NODE_DIST="node-v${NODE_VERSION}-linux-x64"
+NODE_URL="https://nodejs.org/dist/v${NODE_VERSION}/${NODE_DIST}.tar.gz"
+
+# Create Node.js directory
+mkdir -p "${BUILD_DIR}/.heroku/node"
+
+# Download and extract Node.js
+cd "${BUILD_DIR}/.heroku"
+curl -s "${NODE_URL}" | tar -xz
+mv "${NODE_DIST}"/* node/
+
+# Update PATH to include Node.js
+export PATH="${BUILD_DIR}/.heroku/node/bin:$PATH"
+
+echo "Node.js installed successfully" | indent
+echo "Node version: $(node --version)" | indent
+echo "NPM version: $(npm --version)" | indent
+
 # Run yarn install from the root of the project first
 echo "Installing dependencies with yarn..." | indent
 cd "${BUILD_DIR}" || exit 1
