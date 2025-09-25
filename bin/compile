@@ -272,19 +272,6 @@ else
     exit 1
 fi
 
-# Create tar archive of packages for runtime
-echo "Creating package archive for runtime..." | indent
-if [ -d "${VERDACCIO_STORAGE}" ]; then
-    tar -czf "${BUILD_DIR}/verdaccio-packages.tar.gz" -C "${VERDACCIO_STORAGE}" .
-    echo "Package archive created successfully" | indent
-else
-    echo "No Verdaccio storage to archive" | indent
-fi
-
-# Copy Verdaccio config to BUILD_DIR
-echo "Copying Verdaccio config to build directory..." | indent
-cp "${BUILDPACK_DIR}/verdaccio-config.yaml" "${BUILD_DIR}/verdaccio-config.yaml"
-echo "Verdaccio config copied successfully" | indent
 
 (
     mv "${BUILD_DIR}/${APP_BASE}" "${STAGE}" &&
@@ -305,6 +292,25 @@ cat >> "${BUILD_DIR}/.npmrc" << EOF
 registry=${VERDACCIO_REGISTRY}
 @${ORG_NAME}:registry=${VERDACCIO_REGISTRY}/:_authToken=${NPM_TOKEN}
 EOF
+
+# Create tar archive of packages for runtime
+echo "Creating package archive for runtime..." | indent
+if [ -d "${VERDACCIO_STORAGE}" ]; then
+    tar -czf "${BUILD_DIR}/verdaccio-packages.tar.gz" -C "${VERDACCIO_STORAGE}" .
+    if [ -f "${BUILD_DIR}/verdaccio-packages.tar.gz" ]; then
+        echo "Package archive created successfully: $(ls -lh "${BUILD_DIR}/verdaccio-packages.tar.gz" | awk '{print $5}')" | indent
+    else
+        echo "FAILED to create package archive" | indent
+        exit 1
+    fi
+else
+    echo "No Verdaccio storage to archive" | indent
+fi
+
+# Copy Verdaccio config to BUILD_DIR
+echo "Copying Verdaccio config to build directory..." | indent
+cp "${BUILDPACK_DIR}/verdaccio-config.yaml" "${BUILD_DIR}/verdaccio-config.yaml"
+echo "Verdaccio config copied successfully" | indent
 
 # List final files in BUILD_DIR
 echo "Final build directory contents:" | indent
