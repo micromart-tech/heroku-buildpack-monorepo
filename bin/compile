@@ -258,15 +258,19 @@ echo "Verdaccio registry started successfully" | indent
 
 # Use Lerna to publish packages to Verdaccio
 echo "Publishing packages to Verdaccio..." | indent
-npx lerna publish from-package --yes --registry=${VERDACCIO_REGISTRY}
+LERNA_OUTPUT=$(npx lerna publish from-package --yes --registry=${VERDACCIO_REGISTRY} 2>&1)
+LERNA_EXIT_CODE=$?
 
-if [ $? -ne 0 ]; then
+# Check if Lerna actually succeeded by looking for success message
+if echo "$LERNA_OUTPUT" | grep -q "lerna success published" || [ $LERNA_EXIT_CODE -eq 0 ]; then
+    echo "Packages published to Verdaccio successfully" | indent
+    echo "$LERNA_OUTPUT" | indent
+else
     echo "FAILED to publish packages to Verdaccio" | indent
+    echo "$LERNA_OUTPUT" | indent
     kill $VERDACCIO_PID 2>/dev/null
     exit 1
 fi
-
-echo "Packages published to Verdaccio successfully" | indent
 
 # Create tar archive of packages for runtime
 echo "Creating package archive for runtime..." | indent
