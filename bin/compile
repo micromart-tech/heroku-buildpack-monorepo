@@ -193,13 +193,37 @@ fi
 
 echo "Dependencies installed successfully" | indent
 
-# Use Lerna to bump minor versions of all packages
-echo "Bumping package versions with Lerna..." | indent
-npx lerna version minor --yes --no-push --no-git-tag-version
+# Bump minor versions of all packages manually
+echo "Bumping package versions..." | indent
 
-if [ $? -ne 0 ]; then
-    echo "FAILED to bump package versions with Lerna" | indent
-    exit 1
+# Find all package.json files in packages directory and bump versions
+# Not using lerna because it requires being in a git repository
+if [ -d "${BUILD_DIR}/packages" ]; then
+    for package_dir in "${BUILD_DIR}/packages"/*; do
+        if [ -f "${package_dir}/package.json" ]; then
+            package_name=$(basename "${package_dir}")
+            echo "Bumping version for package: ${package_name}" | indent
+            
+            # Read current version and bump minor version
+            current_version=$(grep '"version"' "${package_dir}/package.json" | sed 's/.*"version": *"\([^"]*\)".*/\1/')
+            if [ -n "${current_version}" ]; then
+                # Extract major.minor.patch and bump minor
+                major=$(echo "${current_version}" | cut -d. -f1)
+                minor=$(echo "${current_version}" | cut -d. -f2)
+                patch=$(echo "${current_version}" | cut -d. -f3)
+                
+                # Bump minor version
+                new_minor=$((minor + 1))
+                new_version="${major}.${new_minor}.0"
+                
+                echo "Bumping ${package_name} from ${current_version} to ${new_version}" | indent
+                
+                # Update package.json with bumped version
+                sed -i.bak "s/\"version\": \"${current_version}\"/\"version\": \"${new_version}\"/" "${package_dir}/package.json"
+                rm "${package_dir}/package.json.bak"
+            fi
+        fi
+    done
 fi
 
 echo "Package versions bumped successfully" | indent
