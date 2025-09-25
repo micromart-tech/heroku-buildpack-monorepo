@@ -20,6 +20,91 @@ BUILDPACK_DIR="$(dirname "$(dirname "$(readlink -f "$0")")")"
 # Set up Verdaccio storage directory
 VERDACCIO_STORAGE="${BUILDPACK_DIR}/verdaccio-storage"
 
+# Get APP_BASE early for workspace filtering
+if [ ! -f "${ENV_DIR}/APP_BASE" ]; then
+    echo "APP_BASE was not set. Aborting" | indent
+    exit 1
+fi
+APP_BASE="$(cat "${ENV_DIR}/APP_BASE")"
+
+# Filter workspaces to only include the target app and packages
+echo "Filtering workspaces..." | indent
+
+# Get the target app path and parent directory
+TARGET_APP="${APP_BASE}"
+TARGET_PARENT=$(dirname "${TARGET_APP}")
+TARGET_NAME=$(basename "${TARGET_APP}")
+
+echo "Target app: ${TARGET_APP}" | indent
+echo "Target parent: ${TARGET_PARENT}" | indent
+echo "Target name: ${TARGET_NAME}" | indent
+
+# Remove other apps in the same parent directory
+if [ -d "${BUILD_DIR}/${TARGET_PARENT}" ]; then
+    for app_dir in "${BUILD_DIR}/${TARGET_PARENT}"/*; do
+        if [ -d "${app_dir}" ] && [ "$(basename "${app_dir}")" != "${TARGET_NAME}" ]; then
+            echo "Removing app: $(basename "${app_dir}")" | indent
+            rm -rf "${app_dir}"
+        fi
+    done
+fi
+
+# Update package.json workspaces to only include the target app
+echo "Updating package.json workspaces..." | indent
+if [ -f "${BUILD_DIR}/package.json" ]; then
+    # Use jq to filter workspaces if available, otherwise use sed
+    if command -v jq >/dev/null 2>&1; then
+        # Use jq to filter workspaces
+        jq --arg target "${TARGET_APP}" '
+            if .workspaces then
+                if .workspaces.packages then
+                    .workspaces.packages = (.workspaces.packages | map(select(. == "packages/*" or . == $target)))
+                else
+                    .workspaces = (.workspaces | map(select(. == "packages/*" or . == $target)))
+                end
+            else
+                .
+            end
+        ' "${BUILD_DIR}/package.json" > "${BUILD_DIR}/package.json.tmp"
+    else
+        # Fallback to sed for basic filtering
+        cp "${BUILD_DIR}/package.json" "${BUILD_DIR}/package.json.tmp"
+        # This is a basic approach - for complex JSON manipulation, jq is recommended
+        echo "Warning: jq not available, using basic filtering" | indent
+    fi
+    
+    mv "${BUILD_DIR}/package.json.tmp" "${BUILD_DIR}/package.json"
+    echo "package.json workspaces updated" | indent
+    
+    # Log the final package.json
+    echo "Final package.json:" | indent
+    cat "${BUILD_DIR}/package.json" | indent
+fi
+
+# Update lerna.json packages to match filtered workspaces
+echo "Updating lerna.json packages..." | indent
+if [ -f "${BUILD_DIR}/lerna.json" ]; then
+    # Use jq to filter packages if available, otherwise use sed
+    if command -v jq >/dev/null 2>&1; then
+        # Use jq to filter packages
+        jq --arg target "${TARGET_APP}" '
+            .packages = (.packages | map(select(. == "packages/*" or . == $target)))
+        ' "${BUILD_DIR}/lerna.json" > "${BUILD_DIR}/lerna.json.tmp"
+    else
+        # Fallback to sed for basic filtering
+        cp "${BUILD_DIR}/lerna.json" "${BUILD_DIR}/lerna.json.tmp"
+        # This is a basic approach - for complex JSON manipulation, jq is recommended
+        echo "Warning: jq not available, using basic filtering" | indent
+    fi
+    
+    mv "${BUILD_DIR}/lerna.json.tmp" "${BUILD_DIR}/lerna.json"
+    echo "lerna.json packages updated" | indent
+    
+    # Log the final lerna.json
+    echo "Final lerna.json:" | indent
+    cat "${BUILD_DIR}/lerna.json" | indent
+fi
+
 # Install Node.js
 echo "Installing Node.js..." | indent
 
@@ -172,90 +257,6 @@ fi
 echo "Copying Verdaccio config to build directory..." | indent
 cp "${BUILDPACK_DIR}/verdaccio-config.yaml" "${BUILD_DIR}/verdaccio-config.yaml"
 echo "Verdaccio config copied successfully" | indent
-
-if [ ! -f "${ENV_DIR}/APP_BASE" ]; then
-    echo "APP_BASE was not set. Aborting" | indent
-    exit 1
-fi
-APP_BASE="$(cat "${ENV_DIR}/APP_BASE")"
-
-# Filter workspaces to only include the target app and packages
-echo "Filtering workspaces..." | indent
-
-# Get the target app path and parent directory
-TARGET_APP="${APP_BASE}"
-TARGET_PARENT=$(dirname "${TARGET_APP}")
-TARGET_NAME=$(basename "${TARGET_APP}")
-
-echo "Target app: ${TARGET_APP}" | indent
-echo "Target parent: ${TARGET_PARENT}" | indent
-echo "Target name: ${TARGET_NAME}" | indent
-
-# Remove other apps in the same parent directory
-if [ -d "${BUILD_DIR}/${TARGET_PARENT}" ]; then
-    for app_dir in "${BUILD_DIR}/${TARGET_PARENT}"/*; do
-        if [ -d "${app_dir}" ] && [ "$(basename "${app_dir}")" != "${TARGET_NAME}" ]; then
-            echo "Removing app: $(basename "${app_dir}")" | indent
-            rm -rf "${app_dir}"
-        fi
-    done
-fi
-
-# Update package.json workspaces to only include the target app
-echo "Updating package.json workspaces..." | indent
-if [ -f "${BUILD_DIR}/package.json" ]; then
-    # Use jq to filter workspaces if available, otherwise use sed
-    if command -v jq >/dev/null 2>&1; then
-        # Use jq to filter workspaces
-        jq --arg target "${TARGET_APP}" '
-            if .workspaces then
-                if .workspaces.packages then
-                    .workspaces.packages = (.workspaces.packages | map(select(. == "packages/*" or . == $target)))
-                else
-                    .workspaces = (.workspaces | map(select(. == "packages/*" or . == $target)))
-                end
-            else
-                .
-            end
-        ' "${BUILD_DIR}/package.json" > "${BUILD_DIR}/package.json.tmp"
-    else
-        # Fallback to sed for basic filtering
-        cp "${BUILD_DIR}/package.json" "${BUILD_DIR}/package.json.tmp"
-        # This is a basic approach - for complex JSON manipulation, jq is recommended
-        echo "Warning: jq not available, using basic filtering" | indent
-    fi
-    
-    mv "${BUILD_DIR}/package.json.tmp" "${BUILD_DIR}/package.json"
-    echo "package.json workspaces updated" | indent
-    
-    # Log the final package.json
-    echo "Final package.json:" | indent
-    cat "${BUILD_DIR}/package.json" | indent
-fi
-
-# Update lerna.json packages to match filtered workspaces
-echo "Updating lerna.json packages..." | indent
-if [ -f "${BUILD_DIR}/lerna.json" ]; then
-    # Use jq to filter packages if available, otherwise use sed
-    if command -v jq >/dev/null 2>&1; then
-        # Use jq to filter packages
-        jq --arg target "${TARGET_APP}" '
-            .packages = (.packages | map(select(. == "packages/*" or . == $target)))
-        ' "${BUILD_DIR}/lerna.json" > "${BUILD_DIR}/lerna.json.tmp"
-    else
-        # Fallback to sed for basic filtering
-        cp "${BUILD_DIR}/lerna.json" "${BUILD_DIR}/lerna.json.tmp"
-        # This is a basic approach - for complex JSON manipulation, jq is recommended
-        echo "Warning: jq not available, using basic filtering" | indent
-    fi
-    
-    mv "${BUILD_DIR}/lerna.json.tmp" "${BUILD_DIR}/lerna.json"
-    echo "lerna.json packages updated" | indent
-    
-    # Log the final lerna.json
-    echo "Final lerna.json:" | indent
-    cat "${BUILD_DIR}/lerna.json" | indent
-fi
 
 (
     mv "${BUILD_DIR}/${APP_BASE}" "${STAGE}" &&
