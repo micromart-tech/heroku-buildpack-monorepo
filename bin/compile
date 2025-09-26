@@ -20,26 +20,27 @@ BUILDPACK_DIR="$(dirname "$(dirname "$(readlink -f "$0")")")"
 # Set up Verdaccio storage directory
 VERDACCIO_STORAGE="${BUILDPACK_DIR}/verdaccio-storage"
 
-# Validate required environment variables
-echo "Validating required environment variables..." | indent
-if [ -z "${NPM_TOKEN}" ]; then
-    echo "ERROR: NPM_TOKEN environment variable is required but not set" | indent
-    exit 1
-fi
-
-if [ -z "${ORG_NAME}" ]; then
-    echo "ERROR: ORG_NAME environment variable is required but not set" | indent
-    exit 1
-fi
-
-echo "Environment variables validated successfully" | indent
-
 # Get APP_BASE early for workspace filtering
 if [ ! -f "${ENV_DIR}/APP_BASE" ]; then
     echo "APP_BASE was not set. Aborting" | indent
     exit 1
 fi
 APP_BASE="$(cat "${ENV_DIR}/APP_BASE")"
+
+# Get required environment variables from ENV_DIR
+if [ ! -f "${ENV_DIR}/NPM_TOKEN" ]; then
+    echo "NPM_TOKEN was not set. Aborting" | indent
+    exit 1
+fi
+NPM_TOKEN="$(cat "${ENV_DIR}/NPM_TOKEN")"
+
+if [ ! -f "${ENV_DIR}/ORG_NAME" ]; then
+    echo "ORG_NAME was not set. Aborting" | indent
+    exit 1
+fi
+ORG_NAME="$(cat "${ENV_DIR}/ORG_NAME")"
+
+echo "Environment variables loaded successfully" | indent
 
 # Filter workspaces to only include the target app and packages
 echo "Filtering workspaces..." | indent
