@@ -303,7 +303,7 @@ echo "Copied ${APP_BASE} to root of app successfully" | indent
 # Configure .npmrc to use Verdaccio registry
 echo "Configuring Verdaccio registry..." | indent
 cat >> "${BUILD_DIR}/.npmrc" << EOF
-registry=${VERDACCIO_REGISTRY}
+//registry.npmjs.org/:_authToken=${NPM_TOKEN}
 @${ORG_NAME}:registry=${VERDACCIO_REGISTRY}/:_authToken=${NPM_TOKEN}
 EOF
 
