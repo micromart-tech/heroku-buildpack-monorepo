@@ -314,6 +314,11 @@ if [ -d "${VERDACCIO_STORAGE}" ]; then
     tar -czf "${BUILD_DIR}/verdaccio-packages.tar.gz" -C "${VERDACCIO_STORAGE}" .
     if [ -f "${BUILD_DIR}/verdaccio-packages.tar.gz" ]; then
         echo "Package archive created successfully: $(ls -lh "${BUILD_DIR}/verdaccio-packages.tar.gz" | awk '{print $5}')" | indent
+        echo "Contents of verdaccio-packages.tar.gz:" | indent
+        tar -tzf "${BUILD_DIR}/verdaccio-packages.tar.gz" | head -20 | indent
+        if [ $(tar -tzf "${BUILD_DIR}/verdaccio-packages.tar.gz" | wc -l) -gt 20 ]; then
+            echo "... and $(($(tar -tzf "${BUILD_DIR}/verdaccio-packages.tar.gz" | wc -l) - 20)) more files" | indent
+        fi
     else
         echo "FAILED to create package archive" | indent
         exit 1
