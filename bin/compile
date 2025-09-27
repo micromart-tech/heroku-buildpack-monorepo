@@ -278,8 +278,12 @@ LERNA_EXIT_CODE=$?
 
 # Check if Lerna actually succeeded by looking for success message
 if echo "$LERNA_OUTPUT" | grep -q "lerna success published" || [ $LERNA_EXIT_CODE -eq 0 ]; then
-    echo "Packages published to Verdaccio successfully" | indent
-    echo "$LERNA_OUTPUT" | indent
+echo "Packages published to Verdaccio successfully" | indent
+echo "$LERNA_OUTPUT" | indent
+
+# Debug: Search for published packages in Verdaccio registry
+echo "Debug: Searching for published packages in Verdaccio registry..." | indent
+npm search "@${ORG_NAME}" --registry=${VERDACCIO_REGISTRY} 2>/dev/null | indent || echo "No packages found or search failed" | indent
 else
     echo "FAILED to publish packages to Verdaccio" | indent
     echo "$LERNA_OUTPUT" | indent
