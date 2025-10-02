@@ -219,17 +219,17 @@ if [ -d "${BUILD_DIR}/packages" ]; then
             package_name=$(basename "${package_dir}")
             echo "Bumping version for package: ${package_name}" | indent
             
-            # Read current version and bump minor version
+            # Read current version and bump patch version
             current_version=$(grep '"version"' "${package_dir}/package.json" | sed 's/.*"version": *"\([^"]*\)".*/\1/')
             if [ -n "${current_version}" ]; then
-                # Extract major.minor.patch and bump minor
+                # Extract major.minor.patch and bump patch
                 major=$(echo "${current_version}" | cut -d. -f1)
                 minor=$(echo "${current_version}" | cut -d. -f2)
                 patch=$(echo "${current_version}" | cut -d. -f3)
                 
-                # Bump minor version
-                new_minor=$((minor + 1))
-                new_version="${major}.${new_minor}.0"
+                # Bump patch version
+                new_patch=$((patch + 1))
+                new_version="${major}.${minor}.${new_patch}"
                 
                 echo "Bumping ${package_name} from ${current_version} to ${new_version}" | indent
                 
